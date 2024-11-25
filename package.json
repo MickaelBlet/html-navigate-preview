@@ -1,0 +1,218 @@
+{
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.80.0"
+    },
+    "name": "html-navigate-preview",
+    "displayName": "HTML navigate preview",
+    "activationEvents": [
+        "onStartupFinished"
+    ],
+    "publisher": "mblet",
+    "main": "./extension.js",
+    "keywords": [
+        "html",
+        "preview"
+    ],
+    "license": "MIT",
+    "icon": "images/icon.drawio.png",
+    "repository": {
+		"type": "git",
+		"url": "https://github.com/MickaelBlet/html-navigate-preview.git"
+	},
+	"homepage": "https://github.com/MickaelBlet/html-navigate-preview/blob/master/README.md",
+    "contributes": {
+        "commands": [
+            {
+                "command": "html.preview.file",
+                "title": "HTML Navigate Preview",
+                "icon": "$(open-preview)",
+                "enablement": "resourceLangId == html || (editorLangId == html && !notebookEditorFocused)"
+            },
+            {
+                "command": "html.preview.folder",
+                "title": "HTML Navigate Preview",
+                "icon": "$(open-preview)",
+                "enablement": "explorerResourceIsFolder"
+            },
+            {
+                "command": "html.preview.refresh",
+                "title": "Refresh",
+                "icon": "$(refresh)",
+                "enablement": "activeWebviewPanelId == html.preview"
+            },
+            {
+                "command": "html.preview.prev",
+                "title": "Prev",
+                "icon": "$(chevron-left)",
+                "enablement": "activeWebviewPanelId == html.preview && html.preview.prev.active"
+            },
+            {
+                "command": "html.preview.next",
+                "title": "Next",
+                "icon": "$(chevron-right)",
+                "enablement": "activeWebviewPanelId == html.preview && html.preview.next.active"
+            },
+            {
+                "command": "html.preview.sync",
+                "title": "Sync",
+                "icon": "$(sync)",
+                "enablement": "activeWebviewPanelId == html.preview && !html.preview.sync.active"
+            },
+            {
+                "command": "html.preview.unsync",
+                "title": "Unsync",
+                "icon": "$(sync-ignored)",
+                "enablement": "activeWebviewPanelId == html.preview && html.preview.sync.active"
+            },
+            {
+                "command": "html.preview.nav.show",
+                "title": "Show navbar",
+                "icon": "$(eye)",
+                "enablement": "activeWebviewPanelId == html.preview && !html.preview.nav.active"
+            },
+            {
+                "command": "html.preview.nav.hide",
+                "title": "Hide navbar",
+                "icon": "$(eye-closed)",
+                "enablement": "activeWebviewPanelId == html.preview && html.preview.nav.active"
+            },
+            {
+                "command": "html.preview.reference",
+                "title": "Reference",
+                "icon": "$(references)",
+                "enablement": "activeWebviewPanelId == html.preview"
+            }
+        ],
+        "menus": {
+            "editor/title": [
+                {
+                    "command": "html.preview.file",
+                    "when": "editorLangId == html && !notebookEditorFocused",
+                    "group": "navigation"
+                },
+                {
+                    "command": "html.preview.sync",
+                    "when": "activeWebviewPanelId == html.preview && !html.preview.sync.active",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "html.preview.unsync",
+                    "when": "activeWebviewPanelId == html.preview && html.preview.sync.active",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "html.preview.refresh",
+                    "when": "activeWebviewPanelId == html.preview",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "html.preview.prev",
+                    "when": "activeWebviewPanelId == html.preview",
+                    "group": "navigation@3"
+                },
+                {
+                    "command": "html.preview.next",
+                    "when": "activeWebviewPanelId == html.preview",
+                    "group": "navigation@4"
+                },
+                {
+                    "command": "html.preview.nav.show",
+                    "when": "activeWebviewPanelId == html.preview && !html.preview.nav.active",
+                    "group": "navigation@5"
+                },
+                {
+                    "command": "html.preview.nav.hide",
+                    "when": "activeWebviewPanelId == html.preview && html.preview.nav.active",
+                    "group": "navigation@5"
+                },
+                {
+                    "command": "html.preview.reference",
+                    "when": "activeWebviewPanelId == html.preview",
+                    "group": "navigation@6"
+                }
+            ],
+            "explorer/context": [
+                {
+                    "command": "html.preview.file",
+                    "when": "resourceLangId == html",
+                    "group": "1_preview"
+                },
+                {
+                    "command": "html.preview.folder",
+                    "when": "explorerResourceIsFolder",
+                    "group": "1_preview"
+                }
+            ],
+            "webview/context": [
+                {
+                    "command": "html.preview.sync",
+                    "when": "activeWebviewPanelId == html.preview && !html.preview.sync.active",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "html.preview.unsync",
+                    "when": "activeWebviewPanelId == html.preview && html.preview.sync.active",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "html.preview.refresh",
+                    "when": "activeWebviewPanelId == html.preview",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "html.preview.prev",
+                    "when": "activeWebviewPanelId == html.preview",
+                    "group": "navigation@3"
+                },
+                {
+                    "command": "html.preview.next",
+                    "when": "activeWebviewPanelId == html.preview",
+                    "group": "navigation@4"
+                },
+                {
+                    "command": "html.preview.reference",
+                    "when": "activeWebviewPanelId == html.preview",
+                    "group": "navigation@5"
+                },
+                {
+                    "command": "html.preview.nav.show",
+                    "when": "activeWebviewPanelId == html.preview && !html.preview.nav.active",
+                    "group": "nav_bar@5"
+                },
+                {
+                    "command": "html.preview.nav.hide",
+                    "when": "activeWebviewPanelId == html.preview && html.preview.nav.active",
+                    "group": "nav_bar@5"
+                }
+            ]
+        },
+        "configuration": {
+            "properties": {
+                "html-preview.css": {
+                    "title": "Css",
+                    "type": "object",
+                    "description": "Default CSS",
+                    "default": {
+                        "body": {
+                            "color": "black",
+                            "background": "white"
+                        }
+                    }
+                },
+                "html-preview.delay": {
+                    "title": "Delay",
+                    "type": "number",
+                    "description": "Delay between refresh when synchronized",
+                    "default": 100
+                },
+                "html-preview.startup-synchronized": {
+                    "title": "Synchronized on startup",
+                    "type": "boolean",
+                    "description": "Automatique synchronized on startup",
+                    "default": false
+                }
+            }
+        }
+    }
+}
