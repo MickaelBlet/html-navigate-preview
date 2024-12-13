@@ -1,11 +1,9 @@
 const vscode = require('vscode');
 const path = require('path');
-const fs = require("fs");
 
 const extensionId = 'mblet.html-navigate-preview';
 const extensionIdNormalize = extensionId.replace(/[.-]/g, '_');
 let log = undefined;
-let activeWebViewPannel = undefined;
 
 const fixRegexes = [
     /(<link\s[^]*?(?!>)(?:href\s*=\s*['"]))((?!http|\/).*?)(['"][^>]*[>])/gmi,
@@ -26,12 +24,12 @@ class Previewer {
         this.navBarActive = true;
     }
 
-    createWebview() {
+    createWebview(side = vscode.ViewColumn.Two) {
         log.info(`Create webview`);
         this.webviewPannel = vscode.window.createWebviewPanel(
             'html.navigate.preview',
             'HTML navigate preview',
-            vscode.ViewColumn.Two,
+            side,
             {
                 enableScripts: true,
                 enableFindWidget: true,
@@ -53,13 +51,29 @@ class Previewer {
             async (message) => {
                 log.info(message);
                 switch (message.command) {
+                    case 'loaded':
+                        this.webviewPannel?.webview?.postMessage({
+                            command: 'intervalLinkUpdate'
+                        });
+                        this.updateNavbar();
+                        break;
                     case 'addLocalResourceFromUri':
-                        const webviewUri = this.addUriOnLocalRessourceRoots(message.data.uri);
-                        this.webviewPannel.webview.postMessage({
+                        const webviewUri = await this.addUriOnLocalRessourceRoots(message.data.uri);
+                        this.webviewPannel?.webview?.postMessage({
                             command: 'addResolveLink',
                             data: {
                                 src: message.data.src,
                                 resolve: `${webviewUri}`
+                            }
+                        });
+                        break;
+                    case 'addLocalScriptResourceFromUri':
+                        const webviewScriptUri = await this.addUriOnLocalRessourceRoots(message.data.uri);
+                        this.webviewPannel?.webview?.postMessage({
+                            command: 'addResolveScriptLink',
+                            data: {
+                                src: message.data.src,
+                                resolve: `${webviewScriptUri}`
                             }
                         });
                         break;
@@ -89,18 +103,18 @@ class Previewer {
                     case 'uriTo':
                         let uriStr = 'file://';
                         uriStr += message.data.path;
-                        if (message.query !== undefined) {
-                            uriStr += `?${message.query}`;
+                        if (message.data.query !== undefined) {
+                            uriStr += `?${message.data.query}`;
                         }
-                        if (message.fragment !== undefined) {
-                            uriStr += `#${message.fragment}`;
+                        if (message.data.fragment !== undefined) {
+                            uriStr += `#${message.data.fragment}`;
                         }
-                        this.load(vscode.Uri.parse(uriStr), true);
+                        await this.load(vscode.Uri.parse(uriStr), true);
                         break;
                     case 'historyIndexTo':
                         // get index of uri
                         this.index = parseInt(message.data);
-                        this.load(vscode.Uri.parse(this.uris[this.index]));
+                        await this.load(vscode.Uri.parse(this.uris[this.index]));
                         break;
                 }
             },
@@ -129,24 +143,34 @@ class Previewer {
         const dirUri = path.dirname(localpath);
         if (!this.localResourceRoots.includes(dirUri)) {
             this.localResourceRoots.push(dirUri);
-            // log.info(`Length of localroots: ${this.localResourceRoots.length}`);
+            log.info(`Length of localroots: ${this.localResourceRoots.length}`);
             this.webviewPannel.webview.options = {
                 enableScripts: true,
                 enableCommandUris: true,
                 localResourceRoots: this.localResourceRoots.map((e)=>{return vscode.Uri.file(e);})
             };
-            // for (let i = 0; i < this.localResourceRoots.length; i++) {
-            //     log.info(`- ${this.localResourceRoots[i]}`);
-            // }
+            for (let i = 0; i < this.localResourceRoots.length; i++) {
+                log.info(`- ${this.localResourceRoots[i]}`);
+            }
         }
         let webViewUri = this.webviewPannel.webview.asWebviewUri(vscode.Uri.file(localpath));
         return webViewUri;
     }
 
-    addUriOnLocalRessourceRoots(uri) {
+    async stat(path) {
+        try {
+            await vscode.workspace.fs.stat(vscode.Uri.file(path));
+            return true;
+        }
+        catch (e) {
+            return false;
+        }
+    }
+
+    async addUriOnLocalRessourceRoots(uri) {
         let localpath = path.dirname(this.uri.fsPath) + uri.path;
         let j = 1;
-        while (!fs.existsSync(localpath)) {
+        while (!await this.stat(localpath)) {
             localpath = path.dirname(this.uri.fsPath) + '/..'.repeat(j) + uri.path;
             j++;
             if (j > 5) {
@@ -157,15 +181,15 @@ class Previewer {
         let dirUri = path.dirname(localpath);
         if (!this.localResourceRoots.includes(dirUri)) {
             this.localResourceRoots.push(dirUri);
-            // log.info(`Length of localroots: ${this.localResourceRoots.length}`);
+            log.info(`Length of localroots: ${this.localResourceRoots.length}`);
             this.webviewPannel.webview.options = {
                 enableScripts: true,
                 enableCommandUris: true,
                 localResourceRoots: this.localResourceRoots.map((e)=>{return vscode.Uri.file(e);})
             };
-            // for (let i = 0; i < this.localResourceRoots.length; i++) {
-            //     log.info(`- ${this.localResourceRoots[i]}`);
-            // }
+            for (let i = 0; i < this.localResourceRoots.length; i++) {
+                log.info(`- ${this.localResourceRoots[i]}`);
+            }
         }
         let uriPath = 'file://' + localpath;
         if (uri.query !== undefined) {
@@ -175,6 +199,7 @@ class Previewer {
             uriPath += `#${uri.fragment}`;
         }
         let webViewUri = this.webviewPannel.webview.asWebviewUri(vscode.Uri.parse(uriPath));
+        log.info(webViewUri.toString(true));
         return webViewUri;
     }
 
@@ -315,20 +340,14 @@ class Previewer {
         let prevClass = 'icon_button';
         let nextClass = 'icon_button';
 
-        // active prev and next buttons
-        if (this.index == 0) {
-            prevClass = 'icon_button_disabled';
-        }
-        if (this.index == this.uris.length - 1) {
-            nextClass = 'icon_button_disabled';
-        }
+
         let nav = `
             <div id="${extensionIdNormalize}_nav_body">
                 <div id="${extensionIdNormalize}_nav_sync" data-tooltip="Synchronize" class="icon_button"><svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path shape-rendering="auto" fill-rule="evenodd" clip-rule="evenodd" d="M2.006 8.267L.78 9.5 0 8.73l2.09-2.07.76.01 2.09 2.12-.76.76-1.167-1.18a5 5 0 0 0 9.4 1.983l.813.597a6 6 0 0 1-11.22-2.683zm10.99-.466L11.76 6.55l-.76.76 2.09 2.11.76.01 2.09-2.07-.75-.76-1.194 1.18a6 6 0 0 0-11.11-2.92l.81.594a5 5 0 0 1 9.3 2.346z"/></svg></div>
                 <div id="${extensionIdNormalize}_nav_unsync" data-tooltip="Unsynchronize" class="icon_button hidden"><svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path shape-rendering="auto" fill-rule="evenodd" clip-rule="evenodd" d="M5.468 3.687l-.757-.706a6 6 0 0 1 9.285 4.799L15.19 6.6l.75.76-2.09 2.07-.76-.01L11 7.31l.76-.76 1.236 1.25a5 5 0 0 0-7.528-4.113zm4.55 8.889l.784.73a6 6 0 0 1-8.796-5.04L.78 9.5 0 8.73l2.09-2.07.76.01 2.09 2.12-.76.76-1.167-1.18a5 5 0 0 0 7.005 4.206z"/><path d="M1.123 2.949l.682-.732L13.72 13.328l-.682.732z"/></svg></div>
                 <div id="${extensionIdNormalize}_nav_refresh" data-tooltip="Refresh" class="icon_button"><svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path shape-rendering="auto" fill-rule="evenodd" clip-rule="evenodd" d="M4.681 3H2V2h3.5l.5.5V6H5V4a5 5 0 1 0 4.53-.761l.302-.954A6 6 0 1 1 4.681 3z"/></svg></div>
-                <div id="${extensionIdNormalize}_nav_prev" data-tooltip="Prev" class="${prevClass}"><svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path shape-rendering="auto" fill-rule="evenodd" clip-rule="evenodd" d="M5.928 7.976l4.357 4.357-.618.62L5 8.284v-.618L9.667 3l.618.619-4.357 4.357z"/></svg></div>
-                <div id="${extensionIdNormalize}_nav_next" data-tooltip="Next" class="${nextClass}"><svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path shape-rendering="auto" fill-rule="evenodd" clip-rule="evenodd" d="M10.072 8.024L5.715 3.667l.618-.62L11 7.716v.618L6.333 13l-.618-.619 4.357-4.357z"/></svg></div>
+                <div id="${extensionIdNormalize}_nav_prev" data-tooltip="Prev" class="icon_button icon_button_disabled"><svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path shape-rendering="auto" fill-rule="evenodd" clip-rule="evenodd" d="M5.928 7.976l4.357 4.357-.618.62L5 8.284v-.618L9.667 3l.618.619-4.357 4.357z"/></svg></div>
+                <div id="${extensionIdNormalize}_nav_next" data-tooltip="Next" class="icon_button icon_button_disabled"><svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path shape-rendering="auto" fill-rule="evenodd" clip-rule="evenodd" d="M10.072 8.024L5.715 3.667l.618-.62L11 7.716v.618L6.333 13l-.618-.619 4.357-4.357z"/></svg></div>
                 <select id="${extensionIdNormalize}_nav_select"></select>
                 <div id="${extensionIdNormalize}_nav_reference" data-tooltip="Reference" class="icon_button"><svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path shape-rendering="auto" fill-rule="evenodd" clip-rule="evenodd" d="M11.105 4.561l-3.43 3.427-1.134-1.12 2.07-2.08h-4.8a2.4 2.4 0 1 0 0 4.8h.89v1.6h-.88a4 4 0 0 1 0-7.991h4.8L6.54 1.13 7.675 0l3.43 3.432v1.13zM16.62 24h-9.6l-.8-.8V10.412l.8-.8h9.6l.8.8V23.2l-.8.8zm-8.8-1.6h8V11.212h-8V22.4zm5.6-20.798h9.6l.8.8v12.786l-.8.8h-4v-1.6h3.2V3.2h-8v4.787h-1.6V2.401l.8-.8zm.8 11.186h-4.8v1.6h4.8v-1.6zm-4.8 3.2h4.8v1.6h-4.8v-1.6zm4.8 3.2h-4.8v1.6h4.8v-1.6zm1.6-14.4h4.8v1.6h-4.8v-1.6zm4.8 6.4h-1.6v1.6h1.6v-1.6zm-3.338-3.176v-.024h3.338v1.6h-1.762l-1.576-1.576z"/></svg></div>
             </div>
@@ -341,9 +360,31 @@ class Previewer {
 
     addApiScript() {
         let api = `
+            // force jump to location
+            window.location = '#${this.uri.fragment}';
+
+            // VSCODE
             const vscode = acquireVsCodeApi();
-            const _regexp = /^(([^:/?#]+?):)?(\\/\\/([^/?#]*))?([^?#]*)(\\?([^#]*))?(#(.*))?/;
+
+            // First load script
+            vscode.postMessage({
+                command: 'loaded'
+            });
+
+            const _regexVscodePath = /^(([^:/?#]+?):)?(\\/\\/([^/?#]*))?([^?#]*)(\\?([^#]*))?(#(.*))?/;
+
             let ${extensionIdNormalize}_localLinkMap = [];
+            let ${extensionIdNormalize}_resolveLinkMap = [];
+
+            function ${extensionIdNormalize}_reloadScript(script) {
+                let head= document.getElementsByTagName('head')[0];
+                let new_script = document.createElement('script');
+                new_script.id = script.id;
+                new_script.type = script.type;
+                new_script.onload = script.onload;
+                new_script.src = script.src;
+                head.appendChild(new_script);
+            }
 
             function ${extensionIdNormalize}_createUri(path, query, fragment) {
                 return {
@@ -363,14 +404,13 @@ class Previewer {
             function ${extensionIdNormalize}_redirectLinks(link_items) {
                 for (let i = 0; i < link_items.length; i++) {
                     if (!link_items[i].href.startsWith('command:') && link_items[i].href.startsWith('vscode-webview://')) {
-                        const match = _regexp.exec(link_items[i].href);
+                        const match = _regexVscodePath.exec(link_items[i].href);
                         if (match) {
+                            let path = '${path.dirname(this.uri.fsPath)}' + match[5];
                             if (match[7]?.includes('&extensionId=${extensionId}')) {
-                                link_items[i].href = 'command:html.preview.file?' + encodeURIComponent(JSON.stringify(${extensionIdNormalize}_createUri('${path.join(this.uri.fsPath)}', match[7], match[9])));
+                                path = '${path.join(this.uri.fsPath)}';
                             }
-                            else {
-                                link_items[i].href = 'command:html.preview.file?' + encodeURIComponent(JSON.stringify(${extensionIdNormalize}_createUri('${path.dirname(this.uri.fsPath)}' + match[5], match[7], match[9])));
-                            }
+                            link_items[i].href = 'command:html.navigate.preview.internal.load?' + encodeURIComponent(JSON.stringify(${extensionIdNormalize}_createUri(path, match[7], match[9])));
                         }
                     }
                 }
@@ -379,25 +419,18 @@ class Previewer {
             function ${extensionIdNormalize}_redirectLinksWithOnClick(link_items) {
                 for (let i = 0; i < link_items.length; i++) {
                     if (!link_items[i].href.startsWith('command:') && link_items[i].href.startsWith('vscode-webview://')) {
-                        const match = _regexp.exec(link_items[i].href);
+                        const match = _regexVscodePath.exec(link_items[i].href);
                         if (match) {
+                            let path = '${path.dirname(this.uri.fsPath)}' + match[5];
                             if (match[7]?.includes('&extensionId=${extensionId}')) {
-                                link_items[i].href = 'command:html.preview.file?' + encodeURIComponent(JSON.stringify(${extensionIdNormalize}_createUri('${path.join(this.uri.fsPath)}', match[7], match[9])));
-                                link_items[i].onclick = function() {
-                                    vscode.postMessage({
-                                        command: 'uriTo',
-                                        data: ${extensionIdNormalize}_createUri('${path.join(this.uri.fsPath)}', match[7], match[9])
-                                    });
-                                }
+                                path = '${path.join(this.uri.fsPath)}';
                             }
-                            else {
-                                link_items[i].href = 'command:html.preview.file?' + encodeURIComponent(JSON.stringify(${extensionIdNormalize}_createUri('${path.dirname(this.uri.fsPath)}' + match[5], match[7], match[9])));
-                                link_items[i].onclick = function() {
-                                    vscode.postMessage({
-                                        command: 'uriTo',
-                                        data: ${extensionIdNormalize}_createUri('${path.dirname(this.uri.fsPath)}' + match[5], match[7], match[9])
-                                    });
-                                }
+                            link_items[i].href = 'javascript:void(0);';
+                            link_items[i].onclick = function() {
+                                vscode.postMessage({
+                                    command: 'uriTo',
+                                    data: ${extensionIdNormalize}_createUri(path, match[7], match[9])
+                                });
                             }
                         }
                     }
@@ -406,41 +439,86 @@ class Previewer {
 
             function ${extensionIdNormalize}_fixLinks(link_items) {
                 for (let i = 0; i < link_items.length; i++) {
-                    if (link_items[i].src.startsWith('vscode-webview://')) {
+                    if (link_items[i].src?.startsWith('vscode-webview://')) {
                         if (link_items[i].src in ${extensionIdNormalize}_localLinkMap) {
                             // replace source from map
                             link_items[i].src = ${extensionIdNormalize}_localLinkMap[link_items[i].src];
                         }
                         else {
-                            // send to vscode a resolve link
-                            const match = _regexp.exec(link_items[i].src);
-                            if (match) {
-                                let uri = ${extensionIdNormalize}_createUri(match[5], match[7], match[9]);
-                                vscode.postMessage({
-                                    command: 'addLocalResourceFromUri',
-                                    data: {
-                                        src: link_items[i].src,
-                                        uri: uri
-                                    }
-                                });
+                            if (!(link_items[i].src in ${extensionIdNormalize}_resolveLinkMap)) {
+                                ${extensionIdNormalize}_resolveLinkMap[link_items[i].src] = [];
+                                // send to vscode a resolve link
+                                const match = _regexVscodePath.exec(link_items[i].src);
+                                if (match) {
+                                    let uri = ${extensionIdNormalize}_createUri(match[5], match[7], match[9]);
+                                    vscode.postMessage({
+                                        command: 'addLocalResourceFromUri',
+                                        data: {
+                                            src: link_items[i].src,
+                                            uri: uri
+                                        }
+                                    });
+                                }
+                                ${extensionIdNormalize}_resolveLinkMap[link_items[i].src].push(link_items[i]);
+                            }
+                            else if (!${extensionIdNormalize}_resolveLinkMap[link_items[i].src].includes(link_items[i])) {
+                                ${extensionIdNormalize}_resolveLinkMap[link_items[i].src].push(link_items[i]);
                             }
                         }
                     }
                 }
             }
 
-            // ${extensionIdNormalize}_fixIframes(document.getElementsByTagName('iframe'));
+            function ${extensionIdNormalize}_scriptFixLinks(link_items) {
+                for (let i = 0; i < link_items.length; i++) {
+                    if (link_items[i].src?.startsWith('vscode-webview://')) {
+                        if (link_items[i].src in ${extensionIdNormalize}_localLinkMap) {
+                            // replace source from map
+                            link_items[i].src = ${extensionIdNormalize}_localLinkMap[link_items[i].src];
+                            ${extensionIdNormalize}_reloadScript(link_items[i]);
+                        }
+                        else {
+                            if (!(link_items[i].src in ${extensionIdNormalize}_resolveLinkMap)) {
+                                ${extensionIdNormalize}_resolveLinkMap[link_items[i].src] = [];
+                                // send to vscode a resolve link
+                                const match = _regexVscodePath.exec(link_items[i].src);
+                                if (match) {
+                                    let uri = ${extensionIdNormalize}_createUri(match[5], match[7], match[9]);
+                                    vscode.postMessage({
+                                        command: 'addLocalScriptResourceFromUri',
+                                        data: {
+                                            src: link_items[i].src,
+                                            uri: uri
+                                        }
+                                    });
+                                }
+                                ${extensionIdNormalize}_resolveLinkMap[link_items[i].src].push(link_items[i]);
+                            }
+                            else if (!${extensionIdNormalize}_resolveLinkMap[link_items[i].src].includes(link_items[i])) {
+                                ${extensionIdNormalize}_resolveLinkMap[link_items[i].src].push(link_items[i]);
+                            }
+                        }
+                    }
+                }
+            }
+
+            ${extensionIdNormalize}_fixIframes(document.getElementsByTagName('iframe'));
             ${extensionIdNormalize}_redirectLinks(document.getElementsByTagName('a'));
             ${extensionIdNormalize}_redirectLinksWithOnClick(document.getElementsByTagName('area'));
             ${extensionIdNormalize}_fixLinks(document.getElementsByTagName('img'));
             ${extensionIdNormalize}_fixLinks(document.getElementsByTagName('input'));
-            setInterval(() => {
-                // ${extensionIdNormalize}_fixIframes(document.getElementsByTagName('iframe'));
-                ${extensionIdNormalize}_redirectLinks(document.getElementsByTagName('a'));
-                ${extensionIdNormalize}_redirectLinksWithOnClick(document.getElementsByTagName('area'));
-                ${extensionIdNormalize}_fixLinks(document.getElementsByTagName('img'));
-                ${extensionIdNormalize}_fixLinks(document.getElementsByTagName('input'));
-            }, 100);
+            ${extensionIdNormalize}_scriptFixLinks(document.getElementsByTagName('script'));
+
+            function ${extensionIdNormalize}_intervalLinkUpdate() {
+                setInterval(() => {
+                    ${extensionIdNormalize}_fixIframes(document.getElementsByTagName('iframe'));
+                    ${extensionIdNormalize}_redirectLinks(document.getElementsByTagName('a'));
+                    ${extensionIdNormalize}_redirectLinksWithOnClick(document.getElementsByTagName('area'));
+                    ${extensionIdNormalize}_fixLinks(document.getElementsByTagName('img'));
+                    ${extensionIdNormalize}_fixLinks(document.getElementsByTagName('input'));
+                    ${extensionIdNormalize}_scriptFixLinks(document.getElementsByTagName('script'));
+                }, 100);
+            }
 
             function ${extensionIdNormalize}_update_sync(state) {
                 if (state) {
@@ -461,26 +539,6 @@ class Previewer {
                 }
             }
 
-            // Handle messages sent from the extension
-            window.addEventListener('message', event => {
-                // console.log(event);
-                const message = event.data; // The JSON data our extension sent
-                switch (message.command) {
-                    case 'addResolveLink':
-                        ${extensionIdNormalize}_localLinkMap[message.data.src] = message.data.resolve;
-                        break;
-                    case 'updateSync':
-                        ${extensionIdNormalize}_update_sync(message.data);
-                        break;
-                    case 'hideNavBar':
-                        ${extensionIdNormalize}_hide_nav_bar(message.data);
-                        break;
-                    case 'scrollTop':
-                        window.scrollTo({top: 0});
-                        break;
-                }
-            });
-
             function alert(msg) {
                 vscode.postMessage({
                     command: 'alert',
@@ -495,38 +553,76 @@ class Previewer {
             document.getElementById('${extensionIdNormalize}_nav_prev').onclick      = function() {vscode.postMessage({command: 'prev'});}
             document.getElementById('${extensionIdNormalize}_nav_next').onclick      = function() {vscode.postMessage({command: 'next'});}
             document.getElementById('${extensionIdNormalize}_nav_reference').onclick = function() {vscode.postMessage({command: 'reference'});}
-        `;
-        if (this.uris.length > 0) {
-            api += `
-                function ${extensionIdNormalize}_select() {
-                    vscode.postMessage({
-                        command: 'historyIndexTo',
-                        data: document.getElementById('${extensionIdNormalize}_nav_select').value
-                    });
-                }
 
-                // applicate onchange event of the select on nav_bar
-                document.getElementById('${extensionIdNormalize}_nav_select').onchange   = ${extensionIdNormalize}_select;
-
-                // build options of the select on nav_bar
-                document.getElementById('${extensionIdNormalize}_nav_select').innerHTML  = \`
-            `;
-            for (let i = 0; i < this.uris.length; i++) {
-                const uri = vscode.Uri.parse(this.uris[i]);
-                let transfromUri = path.basename(uri.fsPath);
-                if (uri.fragment !== undefined && uri.fragment != null && uri.fragment != "")
-                transfromUri += "#" + uri.fragment;
-                api += `
-                    <option value="${i}">${transfromUri}</option>
-                `;
+            function ${extensionIdNormalize}_select() {
+                vscode.postMessage({
+                    command: 'historyIndexTo',
+                    data: document.getElementById('${extensionIdNormalize}_nav_select').value
+                });
             }
-            api += `
-                \`;
 
+            function ${extensionIdNormalize}_update_navbar(data) {
+                // build options of the select on nav_bar
+                let selectHtml = '';
+                for (let i = 0; i < data.uris.length; i++) {
+                    selectHtml += \`<option value="\${i}">\${data.uris[i]}</option>\`;
+                }
+                document.getElementById('${extensionIdNormalize}_nav_select').innerHTML = selectHtml;
                 // applicate current value of the select on nav_bar
-                document.getElementById('${extensionIdNormalize}_nav_select').value     = "${this.index}";
-            `;
-        }
+                document.getElementById('${extensionIdNormalize}_nav_select').value = data.index;
+                // update prev and next icon button
+                if (data.index == 0) {
+                    document.getElementById('${extensionIdNormalize}_nav_prev').classList.add("icon_button_disabled");
+                }
+                else {
+                    document.getElementById('${extensionIdNormalize}_nav_prev').classList.remove("icon_button_disabled");
+                }
+                if (data.index == data.uris.length - 1) {
+                    document.getElementById('${extensionIdNormalize}_nav_next').classList.add("icon_button_disabled");
+                }
+                else {
+                    document.getElementById('${extensionIdNormalize}_nav_next').classList.remove("icon_button_disabled");
+                }
+            }
+
+            // applicate onchange event of the select on nav_bar
+            document.getElementById('${extensionIdNormalize}_nav_select').onchange   = ${extensionIdNormalize}_select;
+
+            // Handle messages sent from the extension
+            window.addEventListener('message', event => {
+                const message = event.data; // The JSON data our extension sent
+                switch (message.command) {
+                    case 'intervalLinkUpdate':
+                        ${extensionIdNormalize}_intervalLinkUpdate();
+                        break;
+                    case 'addResolveLink':
+                        for (let i = 0; i < ${extensionIdNormalize}_resolveLinkMap[message.data.src].length; i++) {
+                            ${extensionIdNormalize}_resolveLinkMap[message.data.src][i].src = message.data.resolve;
+                        }
+                        ${extensionIdNormalize}_localLinkMap[message.data.src] = message.data.resolve;
+                        break;
+                    case 'addResolveScriptLink':
+                        for (let i = 0; i < ${extensionIdNormalize}_resolveLinkMap[message.data.src].length; i++) {
+                            ${extensionIdNormalize}_resolveLinkMap[message.data.src][i].src = message.data.resolve;
+                            ${extensionIdNormalize}_reloadScript(${extensionIdNormalize}_resolveLinkMap[message.data.src][i]);
+                        }
+                        ${extensionIdNormalize}_localLinkMap[message.data.src] = message.data.resolve;
+                        break;
+                    case 'updateSync':
+                        ${extensionIdNormalize}_update_sync(message.data);
+                        break;
+                    case 'updateNavbar':
+                        ${extensionIdNormalize}_update_navbar(message.data);
+                        break;
+                    case 'hideNavBar':
+                        ${extensionIdNormalize}_hide_nav_bar(message.data);
+                        break;
+                    case 'toLocation':
+                        window.location = '#' + message.data;
+                        break;
+                }
+            });
+        `;
         if (this.timerSync) {
             api += `
                 ${extensionIdNormalize}_update_sync(true);
@@ -542,22 +638,6 @@ class Previewer {
                 ${extensionIdNormalize}_hide_nav_bar(true);
             `;
         }
-        if (this.uri.fragment !== undefined && this.uri.fragment != null && this.uri.fragment != "") {
-            api += `
-                window.addEventListener('load', function() {
-                    const el = document.getElementById('${this.uri.fragment}');
-                    const y = el?.getBoundingClientRect().top + window.pageYOffset;
-                    if (y !== undefined) {
-                        window.scrollTo({top: y});
-                    }
-                });
-            `;
-        }
-        // else {
-        //     api += `
-        //         window.scrollTo({top: 0});
-        //     `;
-        // }
 
         this.html = `
             <script>${api}</script>
@@ -565,39 +645,45 @@ class Previewer {
         `;
     }
 
-    async load(uri, addToList = false) {
+    async load(uri, addToList = false, force = false, side = undefined) {
         if (addToList) {
             if (this.uris.length == 0 || (this.uris.length > 0 && this.uris[this.uris.length - 1] != uri.toString(true))) {
                 this.uris.push(uri.toString(true));
             }
             this.index = this.uris.length - 1;
         }
+        // active prev and next buttons
+        if (this.index == 0) {
+            vscode.commands.executeCommand(`setContext`, `html.navigate.preview.prev.active`, false);
+        }
+        else {
+            vscode.commands.executeCommand(`setContext`, `html.navigate.preview.prev.active`, true);
+        }
+        if (this.index == this.uris.length - 1) {
+            vscode.commands.executeCommand(`setContext`, `html.navigate.preview.next.active`, false);
+        }
+        else {
+            vscode.commands.executeCommand(`setContext`, `html.navigate.preview.next.active`, true);
+        }
         // create webview
         try {
             if (this.webviewPannel == undefined || this.webviewPannel.webview == undefined) {
-                this.createWebview();
+                this.createWebview(side);
             }
-            this.webviewPannel.webview.postMessage({
-                command: 'scrollTop'
-            });
         }
         catch (error) {
             this.createWebview();
         }
-        // active prev and next buttons
-        if (this.index == 0) {
-            vscode.commands.executeCommand(`setContext`, `html.preview.prev.active`, false);
+        if (false == force && this.uri?.fsPath == uri.fsPath && uri.fragment != undefined) {
+            await this.webviewPannel.webview.postMessage({
+                command: 'toLocation',
+                data: uri.fragment
+            });
+            // update navbar
+            this.updateNavbar();
+            return;
         }
-        else {
-            vscode.commands.executeCommand(`setContext`, `html.preview.prev.active`, true);
-        }
-        if (this.index == this.uris.length - 1) {
-            vscode.commands.executeCommand(`setContext`, `html.preview.next.active`, false);
-        }
-        else {
-            vscode.commands.executeCommand(`setContext`, `html.preview.next.active`, true);
-        }
-        // get uri
+        // get new uri
         this.uri = uri;
         // reset localResourceRoots
         this.localResourceRoots = [];
@@ -632,15 +718,17 @@ class Previewer {
             this.timerSync = undefined;
         }
         this.timerSync = setInterval(async () => {
-            await self.sync();
+            if (this.webviewPannel !== undefined && this.webviewPannel.visible) {
+                await self.sync();
+            }
         }, vscode.workspace.getConfiguration("html-navigate-preview").delay);
         if (this.webviewPannel !== undefined) {
-                await this.webviewPannel.webview.postMessage({
+            await this.webviewPannel?.webview?.postMessage({
                 command: 'updateSync',
                 data: true
             });
         }
-        await vscode.commands.executeCommand(`setContext`, `html.preview.sync.active`, true);
+        await vscode.commands.executeCommand(`setContext`, `html.navigate.preview.sync.active`, true);
     }
 
     async disableSync() {
@@ -649,30 +737,30 @@ class Previewer {
             this.timerSync = undefined;
         }
         if (this.webviewPannel !== undefined) {
-            await this.webviewPannel.webview.postMessage({
+            await this.webviewPannel?.webview?.postMessage({
                 command: 'updateSync',
                 data: false
             });
         }
-        await vscode.commands.executeCommand(`setContext`, `html.preview.sync.active`, false);
+        await vscode.commands.executeCommand(`setContext`, `html.navigate.preview.sync.active`, false);
     }
 
     async sync() {
         try {
             if (vscode.window.activeTextEditor?.document?.uri?.toString(true) == this.uri?.toString(true)) {
                 // get text from file
-                let refhtml = vscode.window.activeTextEditor.document.getText();
-                if (refhtml != this.refhtml) {
+                let refhtml = vscode.window.activeTextEditor?.document?.getText();
+                if (refhtml !== undefined && refhtml != this.refhtml) {
                     log.info('reload from content');
-                    await this.load(this.uri);
+                    await this.load(this.uri, false, true);
                 }
             }
             else {
                 // load file
-                let refhtml = await vscode.workspace.fs.readFile(this.uri);
+                let refhtml = `${await vscode.workspace.fs.readFile(this.uri)}`;
                 if (refhtml != this.refhtml) {
                     log.info('reload from file');
-                    await this.load(this.uri);
+                    await this.load(this.uri, false, true);
                 }
             }
         }
@@ -684,7 +772,7 @@ class Previewer {
     async refresh() {
         try {
             log.info("refresh");
-            await this.load(vscode.Uri.parse(this.uris[this.index]));
+            await this.load(vscode.Uri.parse(this.uris[this.index]), false, true);
         }
         catch (error) {
             log.error(error.toString());
@@ -716,46 +804,79 @@ class Previewer {
     }
 
     async showNavBar() {
-        if (this.webviewPannel !== undefined) {
+        if (this.webviewPannel !== undefined && this.webviewPannel.webview !== undefined) {
             await this.webviewPannel.webview.postMessage({
                 command: 'hideNavBar',
                 data: false
             });
         }
         this.navBarActive = true;
-        await vscode.commands.executeCommand(`setContext`, `html.preview.nav.active`, true);
+        await vscode.commands.executeCommand(`setContext`, `html.navigate.preview.nav.active`, true);
     }
 
     async hideNavBar() {
-        if (this.webviewPannel !== undefined) {
+        if (this.webviewPannel !== undefined && this.webviewPannel.webview !== undefined) {
             await this.webviewPannel.webview.postMessage({
                 command: 'hideNavBar',
                 data: true
             });
         }
         this.navBarActive = false;
-        await vscode.commands.executeCommand(`setContext`, `html.preview.nav.active`, false);
+        await vscode.commands.executeCommand(`setContext`, `html.navigate.preview.nav.active`, false);
+    }
+
+    async updateNavbar() {
+        if (this.webviewPannel !== undefined && this.webviewPannel.webview !== undefined) {
+            let uris = [];
+            for (let i = 0; i < this.uris.length; i++) {
+                const uri = vscode.Uri.parse(this.uris[i]);
+                let transfromUri = path.basename(uri.fsPath);
+                // if (uri.query !== undefined && uri.query != null && uri.query != "") {
+                //     transfromUri += "?" + uri.query;
+                // }
+                if (uri.fragment !== undefined && uri.fragment != null && uri.fragment != "") {
+                    transfromUri += "#" + uri.fragment;
+                }
+                uris.push(transfromUri);
+            }
+            await this.webviewPannel.webview.postMessage({
+                command: 'updateNavbar',
+                data: {
+                    uris: uris,
+                    index: this.index
+                }
+            });
+        }
     }
 } // Previewer
 
 function activate(context) {
     // initialize global log
-    log = vscode.window.createOutputChannel('html preview', { log: true });
+    log = vscode.window.createOutputChannel('html-navigate-preview', { log: true });
     const previewer = new Previewer(context);
     // reset context
-    vscode.commands.executeCommand(`setContext`, `html.preview.prev.active`, false);
-    vscode.commands.executeCommand(`setContext`, `html.preview.next.active`, false);
-    vscode.commands.executeCommand(`setContext`, `html.preview.nav.active`, true);
+    vscode.commands.executeCommand(`setContext`, `html.navigate.preview.nav.active`, true);
+    vscode.commands.executeCommand(`setContext`, `html.navigate.preview.next.active`, false);
+    vscode.commands.executeCommand(`setContext`, `html.navigate.preview.prev.active`, false);
+    vscode.commands.executeCommand(`setContext`, `html.navigate.preview.sync.active`, false);
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('html.preview.file', async (uri) => {
+        vscode.commands.registerCommand('html.navigate.preview.file', async (uri) => {
             // force file scheme
             uri.scheme = 'file';
-            log.info(`Command html.preview.file: '${JSON.stringify(uri)}'`);
-            await previewer.load(uri, true);
+            log.info(`Command html.navigate.preview.file: '${JSON.stringify(uri)}'`);
+            await previewer.load(uri, true, true, vscode.ViewColumn.One);
+            previewer.webviewPannel.reveal(vscode.ViewColumn.One);
         }),
-        vscode.commands.registerCommand('html.preview.folder', async (uri) => {
-            log.info(`Command html.preview.folder: '${JSON.stringify(uri)}'`);
+        vscode.commands.registerCommand('html.navigate.preview.side.file', async (uri) => {
+            // force file scheme
+            uri.scheme = 'file';
+            log.info(`Command html.navigate.preview.side.file: '${JSON.stringify(uri)}'`);
+            await previewer.load(uri, true, true, vscode.ViewColumn.Two);
+            previewer.webviewPannel.reveal(vscode.ViewColumn.Two);
+        }),
+        vscode.commands.registerCommand('html.navigate.preview.folder', async (uri) => {
+            log.info(`Command html.navigate.preview.folder: '${JSON.stringify(uri)}'`);
             const indexHtmlUri = vscode.Uri.file(path.join(uri.fsPath, 'index.html'));
             try {
                 await vscode.workspace.fs.stat(indexHtmlUri);
@@ -770,36 +891,42 @@ function activate(context) {
                 }
             }
         }),
-        vscode.commands.registerCommand('html.preview.refresh', async () => {
-            log.info(`Command html.preview.refresh`);
+        vscode.commands.registerCommand('html.navigate.preview.internal.load', async (uri) => {
+            // force file scheme
+            uri.scheme = 'file';
+            log.info(`Command html.navigate.preview.internal.load: '${JSON.stringify(uri)}'`);
+            await previewer.load(uri, true, false);
+        }),
+        vscode.commands.registerCommand('html.navigate.preview.refresh', async () => {
+            log.info(`Command html.navigate.preview.refresh`);
             await previewer.refresh();
         }),
-        vscode.commands.registerCommand('html.preview.prev', async () => {
-            log.info(`Command html.preview.prev`);
+        vscode.commands.registerCommand('html.navigate.preview.prev', async () => {
+            log.info(`Command html.navigate.preview.prev`);
             await previewer.prev();
         }),
-        vscode.commands.registerCommand('html.preview.next', async () => {
-            log.info(`Command html.preview.next`);
+        vscode.commands.registerCommand('html.navigate.preview.next', async () => {
+            log.info(`Command html.navigate.preview.next`);
             await previewer.next();
         }),
-        vscode.commands.registerCommand('html.preview.sync', async () => {
-            log.info(`Command html.preview.sync`);
+        vscode.commands.registerCommand('html.navigate.preview.sync', async () => {
+            log.info(`Command html.navigate.preview.sync`);
             await previewer.activeSync();
         }),
-        vscode.commands.registerCommand('html.preview.unsync', async () => {
-            log.info(`Command html.preview.unsync`);
+        vscode.commands.registerCommand('html.navigate.preview.unsync', async () => {
+            log.info(`Command html.navigate.preview.unsync`);
             await previewer.disableSync();
         }),
-        vscode.commands.registerCommand('html.preview.nav.show', async () => {
-            log.info(`Command html.preview.nav.show`);
+        vscode.commands.registerCommand('html.navigate.preview.nav.show', async () => {
+            log.info(`Command html.navigate.preview.nav.show`);
             await previewer.showNavBar();
         }),
-        vscode.commands.registerCommand('html.preview.nav.hide', async () => {
-            log.info(`Command html.preview.nav.hide`);
+        vscode.commands.registerCommand('html.navigate.preview.nav.hide', async () => {
+            log.info(`Command html.navigate.preview.nav.hide`);
             await previewer.hideNavBar();
         }),
-        vscode.commands.registerCommand('html.preview.reference', async () => {
-            log.info(`Command html.preview.reference`);
+        vscode.commands.registerCommand('html.navigate.preview.reference', async () => {
+            log.info(`Command html.navigate.preview.reference`);
             await vscode.workspace.openTextDocument(previewer.uri).then(doc => {
                 vscode.window.showTextDocument(doc, vscode.ViewColumn.One);
             });
