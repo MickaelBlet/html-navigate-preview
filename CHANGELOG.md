@@ -1,5 +1,11 @@
 # Change Log
 
+## Version 0.0.4: January 06, 2025
+### Enhancements
+* Reveal on open with folder.
+### Fix
+* Style of the disable icons on navbar.
+
 ## Version 0.0.3: December 13, 2024
 ### Enhancements
 * Sync mode does not update when not visible.

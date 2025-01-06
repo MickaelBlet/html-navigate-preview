@@ -1,5 +1,5 @@
 {
-    "version": "0.0.3",
+    "version": "0.0.4",
     "engines": {
         "vscode": "^1.80.0"
     },
@@ -36,15 +36,21 @@
                 "enablement": "resourceLangId == html || (editorLangId == html && !notebookEditorFocused)"
             },
             {
-                "command": "html.navigate.preview.internal.load",
-                "title": "HTML Navigate Preview load internaly",
-                "enablement": "false"
-            },
-            {
                 "command": "html.navigate.preview.folder",
                 "title": "HTML Navigate Preview",
                 "icon": "$(open-preview)",
                 "enablement": "explorerResourceIsFolder"
+            },
+            {
+                "command": "html.navigate.preview.side.folder",
+                "title": "HTML Navigate Preview on side",
+                "icon": "$(open-preview)",
+                "enablement": "explorerResourceIsFolder"
+            },
+            {
+                "command": "html.navigate.preview.internal.load",
+                "title": "HTML Navigate Preview load internaly",
+                "enablement": "false"
             },
             {
                 "command": "html.navigate.preview.refresh",
@@ -146,13 +152,15 @@
             ],
             "explorer/context": [
                 {
-                    "command": "html.navigate.preview.file",
+                    "command": "html.navigate.preview.side.file",
                     "when": "resourceLangId == html",
+                    "alt": "html.navigate.preview.file",
                     "group": "1_preview"
                 },
                 {
-                    "command": "html.navigate.preview.folder",
+                    "command": "html.navigate.preview.side.folder",
                     "when": "explorerResourceIsFolder",
+                    "alt": "html.navigate.preview.folder",
                     "group": "1_preview"
                 }
             ],
@@ -221,7 +229,7 @@
                 "html-navigate-preview.startup-synchronized": {
                     "title": "Synchronized on startup",
                     "type": "boolean",
-                    "description": "Automatique synchronized on startup",
+                    "description": "Automatic synchronized on startup",
                     "default": false
                 }
             }

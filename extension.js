@@ -272,8 +272,10 @@ class Previewer {
                     height: 22px;
                     width: 22px;
                     border-radius: 4px;
-                    cursor: pointer;
+                    cursor: default;
                     color: var(--vscode-disabledForeground);
+                }
+                #${extensionIdNormalize}_nav_body .icon_button_disabled:hover {
                 }
                 #${extensionIdNormalize}_nav_body .icon_button_disabled svg {
                     margin: 3px;
@@ -346,8 +348,8 @@ class Previewer {
                 <div id="${extensionIdNormalize}_nav_sync" data-tooltip="Synchronize" class="icon_button"><svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path shape-rendering="auto" fill-rule="evenodd" clip-rule="evenodd" d="M2.006 8.267L.78 9.5 0 8.73l2.09-2.07.76.01 2.09 2.12-.76.76-1.167-1.18a5 5 0 0 0 9.4 1.983l.813.597a6 6 0 0 1-11.22-2.683zm10.99-.466L11.76 6.55l-.76.76 2.09 2.11.76.01 2.09-2.07-.75-.76-1.194 1.18a6 6 0 0 0-11.11-2.92l.81.594a5 5 0 0 1 9.3 2.346z"/></svg></div>
                 <div id="${extensionIdNormalize}_nav_unsync" data-tooltip="Unsynchronize" class="icon_button hidden"><svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path shape-rendering="auto" fill-rule="evenodd" clip-rule="evenodd" d="M5.468 3.687l-.757-.706a6 6 0 0 1 9.285 4.799L15.19 6.6l.75.76-2.09 2.07-.76-.01L11 7.31l.76-.76 1.236 1.25a5 5 0 0 0-7.528-4.113zm4.55 8.889l.784.73a6 6 0 0 1-8.796-5.04L.78 9.5 0 8.73l2.09-2.07.76.01 2.09 2.12-.76.76-1.167-1.18a5 5 0 0 0 7.005 4.206z"/><path d="M1.123 2.949l.682-.732L13.72 13.328l-.682.732z"/></svg></div>
                 <div id="${extensionIdNormalize}_nav_refresh" data-tooltip="Refresh" class="icon_button"><svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path shape-rendering="auto" fill-rule="evenodd" clip-rule="evenodd" d="M4.681 3H2V2h3.5l.5.5V6H5V4a5 5 0 1 0 4.53-.761l.302-.954A6 6 0 1 1 4.681 3z"/></svg></div>
-                <div id="${extensionIdNormalize}_nav_prev" data-tooltip="Prev" class="icon_button icon_button_disabled"><svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path shape-rendering="auto" fill-rule="evenodd" clip-rule="evenodd" d="M5.928 7.976l4.357 4.357-.618.62L5 8.284v-.618L9.667 3l.618.619-4.357 4.357z"/></svg></div>
-                <div id="${extensionIdNormalize}_nav_next" data-tooltip="Next" class="icon_button icon_button_disabled"><svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path shape-rendering="auto" fill-rule="evenodd" clip-rule="evenodd" d="M10.072 8.024L5.715 3.667l.618-.62L11 7.716v.618L6.333 13l-.618-.619 4.357-4.357z"/></svg></div>
+                <div id="${extensionIdNormalize}_nav_prev" data-tooltip="Prev" class="icon_button_disabled"><svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path shape-rendering="auto" fill-rule="evenodd" clip-rule="evenodd" d="M5.928 7.976l4.357 4.357-.618.62L5 8.284v-.618L9.667 3l.618.619-4.357 4.357z"/></svg></div>
+                <div id="${extensionIdNormalize}_nav_next" data-tooltip="Next" class="icon_button_disabled"><svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path shape-rendering="auto" fill-rule="evenodd" clip-rule="evenodd" d="M10.072 8.024L5.715 3.667l.618-.62L11 7.716v.618L6.333 13l-.618-.619 4.357-4.357z"/></svg></div>
                 <select id="${extensionIdNormalize}_nav_select"></select>
                 <div id="${extensionIdNormalize}_nav_reference" data-tooltip="Reference" class="icon_button"><svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path shape-rendering="auto" fill-rule="evenodd" clip-rule="evenodd" d="M11.105 4.561l-3.43 3.427-1.134-1.12 2.07-2.08h-4.8a2.4 2.4 0 1 0 0 4.8h.89v1.6h-.88a4 4 0 0 1 0-7.991h4.8L6.54 1.13 7.675 0l3.43 3.432v1.13zM16.62 24h-9.6l-.8-.8V10.412l.8-.8h9.6l.8.8V23.2l-.8.8zm-8.8-1.6h8V11.212h-8V22.4zm5.6-20.798h9.6l.8.8v12.786l-.8.8h-4v-1.6h3.2V3.2h-8v4.787h-1.6V2.401l.8-.8zm.8 11.186h-4.8v1.6h4.8v-1.6zm-4.8 3.2h4.8v1.6h-4.8v-1.6zm4.8 3.2h-4.8v1.6h4.8v-1.6zm1.6-14.4h4.8v1.6h-4.8v-1.6zm4.8 6.4h-1.6v1.6h1.6v-1.6zm-3.338-3.176v-.024h3.338v1.6h-1.762l-1.576-1.576z"/></svg></div>
             </div>
@@ -573,14 +575,18 @@ class Previewer {
                 // update prev and next icon button
                 if (data.index == 0) {
                     document.getElementById('${extensionIdNormalize}_nav_prev').classList.add("icon_button_disabled");
+                    document.getElementById('${extensionIdNormalize}_nav_prev').classList.remove("icon_button");
                 }
                 else {
+                    document.getElementById('${extensionIdNormalize}_nav_prev').classList.add("icon_button");
                     document.getElementById('${extensionIdNormalize}_nav_prev').classList.remove("icon_button_disabled");
                 }
                 if (data.index == data.uris.length - 1) {
                     document.getElementById('${extensionIdNormalize}_nav_next').classList.add("icon_button_disabled");
+                    document.getElementById('${extensionIdNormalize}_nav_next').classList.remove("icon_button");
                 }
                 else {
+                    document.getElementById('${extensionIdNormalize}_nav_next').classList.add("icon_button");
                     document.getElementById('${extensionIdNormalize}_nav_next').classList.remove("icon_button_disabled");
                 }
             }
@@ -880,12 +886,32 @@ function activate(context) {
             const indexHtmlUri = vscode.Uri.file(path.join(uri.fsPath, 'index.html'));
             try {
                 await vscode.workspace.fs.stat(indexHtmlUri);
-                await previewer.load(indexHtmlUri, true);
+                await previewer.load(indexHtmlUri, true, true, vscode.ViewColumn.One);
+                previewer.webviewPannel.reveal(vscode.ViewColumn.One);
             } catch {
                 const indexHtmUri = vscode.Uri.file(path.join(uri.fsPath, 'index.htm'));
                 try {
                     await vscode.workspace.fs.stat(indexHtmUri);
-                    await previewer.load(indexHtmUri, true);
+                    await previewer.load(indexHtmUri, true, true, vscode.ViewColumn.One);
+                    previewer.webviewPannel.reveal(vscode.ViewColumn.One);
+                } catch {
+                    log.error(`index.htm or index.html not found on '${JSON.stringify(uri)}'`);
+                }
+            }
+        }),
+        vscode.commands.registerCommand('html.navigate.preview.side.folder', async (uri) => {
+            log.info(`Command html.navigate.preview.side.folder: '${JSON.stringify(uri)}'`);
+            const indexHtmlUri = vscode.Uri.file(path.join(uri.fsPath, 'index.html'));
+            try {
+                await vscode.workspace.fs.stat(indexHtmlUri);
+                await previewer.load(indexHtmlUri, true, true, vscode.ViewColumn.Two);
+                previewer.webviewPannel.reveal(vscode.ViewColumn.Two);
+            } catch {
+                const indexHtmUri = vscode.Uri.file(path.join(uri.fsPath, 'index.htm'));
+                try {
+                    await vscode.workspace.fs.stat(indexHtmUri);
+                    await previewer.load(indexHtmUri, true, true, vscode.ViewColumn.Two);
+                    previewer.webviewPannel.reveal(vscode.ViewColumn.Two);
                 } catch {
                     log.error(`index.htm or index.html not found on '${JSON.stringify(uri)}'`);
                 }
