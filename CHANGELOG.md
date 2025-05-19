@@ -1,5 +1,10 @@
 # Change Log
 
+## Version 0.0.5: May 19, 2025
+### Enhancements
+* Configuration for postion of navbar.
+* Force refresh without change content.
+
 ## Version 0.0.4: January 06, 2025
 ### Enhancements
 * Reveal on open with folder.

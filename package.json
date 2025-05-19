@@ -1,5 +1,5 @@
 {
-    "version": "0.0.4",
+    "version": "0.0.5",
     "engines": {
         "vscode": "^1.80.0"
     },
@@ -215,10 +215,28 @@
                     "description": "Default CSS",
                     "default": {
                         "body": {
+                            "background": "white",
                             "color": "black",
-                            "background": "white"
+                            "margin": "0",
+                            "padding": "0"
+                        },
+                        "blockquote, code, kbd": {
+                            "background": "white",
+                            "color": "black"
                         }
                     }
+                },
+                "html-navigate-preview.navbar-position": {
+                    "title": "Navbar position",
+                    "type": "string",
+                    "enum": [
+                        "top_left",
+                        "bottom_left",
+                        "top_right",
+                        "bottom_right"
+                    ],
+                    "description": "Position of the navbar",
+                    "default": "top_left"
                 },
                 "html-navigate-preview.delay": {
                     "title": "Delay",

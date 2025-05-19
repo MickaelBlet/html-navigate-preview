@@ -226,17 +226,53 @@ class Previewer {
                 styleStr += `}\n`;
             }
         }
+        let navBodyTooltip = ``;
+        let navBodyPosition = vscode.workspace.getConfiguration("html-navigate-preview").get('navbar-position');
+        if ("top_left" == navBodyPosition) {
+            navBodyPosition = `
+                top: 0px;
+                left: 0px;
+                border-radius: 0 0 4px 0;
+            `;
+        }
+        else if ("bottom_left" == navBodyPosition) {
+            navBodyPosition = `
+                bottom: 0px;
+                left: 0px;
+                border-radius: 0 4px 0 0;
+            `;
+            navBodyTooltip = `
+                bottom: 27px;
+            `;
+        }
+        else if ("top_right" == navBodyPosition) {
+            navBodyPosition = `
+                top: 0px;
+                right: 0px;
+                border-radius: 0 0 0 4px;
+            `;
+            navBodyTooltip = `
+            `;
+        }
+        else if ("bottom_right" == navBodyPosition) {
+            navBodyPosition = `
+                bottom: 0px;
+                right: 0px;
+                border-radius: 4px 0 0 0;
+            `;
+            navBodyTooltip = `
+                bottom: 27px;
+            `;
+        }
         this.html = `
             <style>
                 ${styleStr}
                 #${extensionIdNormalize}_nav_body {
+                    ${navBodyPosition}
                     display: flex;
                     gap: 2px;
                     z-index: 16777271;
-                    border-radius: 0 0 4px 0;
                     position: fixed;
-                    top: 0px;
-                    left: 0px;
                     background-color: var(--vscode-panel-background);
                     padding: 0px;
                     color: var(--vscode-icon-foreground);
@@ -286,6 +322,7 @@ class Previewer {
                     filter: drop-shadow(0 0 0.5px var(--vscode-disabledForeground));
                 }
                 #${extensionIdNormalize}_nav_body [data-tooltip]:hover::after {
+                    ${navBodyTooltip}
                     display: block;
                     position: absolute;
                     content: attr(data-tooltip);
@@ -339,10 +376,6 @@ class Previewer {
     }
 
     addNavBar() {
-        let prevClass = 'icon_button';
-        let nextClass = 'icon_button';
-
-
         let nav = `
             <div id="${extensionIdNormalize}_nav_body">
                 <div id="${extensionIdNormalize}_nav_sync" data-tooltip="Synchronize" class="icon_button"><svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path shape-rendering="auto" fill-rule="evenodd" clip-rule="evenodd" d="M2.006 8.267L.78 9.5 0 8.73l2.09-2.07.76.01 2.09 2.12-.76.76-1.167-1.18a5 5 0 0 0 9.4 1.983l.813.597a6 6 0 0 1-11.22-2.683zm10.99-.466L11.76 6.55l-.76.76 2.09 2.11.76.01 2.09-2.07-.75-.76-1.194 1.18a6 6 0 0 0-11.11-2.92l.81.594a5 5 0 0 1 9.3 2.346z"/></svg></div>
@@ -711,8 +744,16 @@ class Previewer {
         this.html = `${this.refhtml}${this.html}`;
         // fix links
         this.fixLinks();
-        // update html
-        this.webviewPannel.webview.html = `${this.html}`;
+        if (this.html == this.webviewPannel.webview.html) {
+            this.webviewPannel.webview.html = ``;
+            setTimeout(() => {
+                // update html
+                this.webviewPannel.webview.html = `${this.html}`;
+            }, 0);
+        }
+        else {
+            this.webviewPannel.webview.html = `${this.html}`;
+        }
         // set title
         this.webviewPannel.title = `${path.basename(this.uri.fsPath)} - HTML preview`;
     }
